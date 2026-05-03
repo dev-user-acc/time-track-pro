@@ -20,6 +20,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.timetrackpro.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -30,6 +31,12 @@
       "expo-secure-store",
       "expo-sqlite",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "127bc0e0-6476-4e55-b2c2-df6e02de9027"
+      }
+    },
+    "owner": "mr.kadyroff"
   }
 }
