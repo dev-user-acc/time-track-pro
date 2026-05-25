@@ -5,15 +5,15 @@ import { generateRandomAlmatyLocation } from '../../shared/utils/location';
 let _db: SQLite.SQLiteDatabase | null = null;
 
 export const getDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
-    if (_db) return _db;
-    _db = await SQLite.openDatabaseAsync('timetrack.db');
-    await initializeSchema(_db);
-    await seedDemoData(_db);
-    return _db;
+  if (_db) return _db;
+  _db = await SQLite.openDatabaseAsync('timetrack.db');
+  await initializeSchema(_db);
+  await seedDemoData(_db);
+  return _db;
 };
 
 const initializeSchema = async (db: SQLite.SQLiteDatabase): Promise<void> => {
-    await db.execAsync(`
+  await db.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
 
@@ -64,24 +64,24 @@ const initializeSchema = async (db: SQLite.SQLiteDatabase): Promise<void> => {
     CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
   `);
 
-    await ensureColumnExists(db, 'time_entries', 'location_lat', 'REAL');
-    await ensureColumnExists(db, 'time_entries', 'location_lng', 'REAL');
-    await ensureColumnExists(db, 'time_entries', 'location_label', "TEXT NOT NULL DEFAULT ''");
+  await ensureColumnExists(db, 'time_entries', 'location_lat', 'REAL');
+  await ensureColumnExists(db, 'time_entries', 'location_lng', 'REAL');
+  await ensureColumnExists(db, 'time_entries', 'location_label', "TEXT NOT NULL DEFAULT ''");
 };
 
-  const ensureColumnExists = async (
-    db: SQLite.SQLiteDatabase,
-    tableName: 'time_entries',
-    columnName: 'location_lat' | 'location_lng' | 'location_label',
-    columnDefinition: string
-  ): Promise<void> => {
-    const columns = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${tableName})`);
-    const hasColumn = columns.some((col) => col.name === columnName);
+const ensureColumnExists = async (
+  db: SQLite.SQLiteDatabase,
+  tableName: 'time_entries',
+  columnName: 'location_lat' | 'location_lng' | 'location_label',
+  columnDefinition: string
+): Promise<void> => {
+  const columns = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${tableName})`);
+  const hasColumn = columns.some((col) => col.name === columnName);
 
-    if (!hasColumn) {
-      await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition};`);
-    }
-  };
+  if (!hasColumn) {
+    await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition};`);
+  }
+};
 
 const seedDemoData = async (db: SQLite.SQLiteDatabase): Promise<void> => {
   const nowIso = new Date().toISOString();
@@ -172,20 +172,20 @@ const seedDemoData = async (db: SQLite.SQLiteDatabase): Promise<void> => {
       ]
     );
 
-      await db.runAsync(
-        `UPDATE projects
+    await db.runAsync(
+      `UPDATE projects
        SET name = ?, description = ?, color = ?, status = ?, owner_id = ?, updated_at = ?
        WHERE id = ?`,
-        [
-          project.name,
-          project.description,
-          project.color,
-          project.status,
-          project.ownerId,
-          nowIso,
-          project.id,
-        ]
-      );
+      [
+        project.name,
+        project.description,
+        project.color,
+        project.status,
+        project.ownerId,
+        nowIso,
+        project.id,
+      ]
+    );
   }
 
   const demoEntries = [
@@ -317,28 +317,28 @@ const seedDemoData = async (db: SQLite.SQLiteDatabase): Promise<void> => {
       ]
     );
 
-      await db.runAsync(
-        `UPDATE time_entries
+    await db.runAsync(
+      `UPDATE time_entries
        SET user_id = ?, project_id = ?, project_name = ?, project_color = ?, description = ?,
            start_time = ?, end_time = ?, duration_seconds = ?, created_at = ?,
            location_lat = ?, location_lng = ?, location_label = ?
        WHERE id = ?`,
-        [
-          entry.userId,
-          entry.projectId,
-          entry.projectName,
-          entry.projectColor,
-          entry.description,
-          entry.startTime,
-          entry.endTime,
-          entry.durationSeconds,
-          entry.createdAt,
-          entry.locationLat,
-          entry.locationLng,
-          entry.locationLabel,
-          entry.id,
-        ]
-      );
+      [
+        entry.userId,
+        entry.projectId,
+        entry.projectName,
+        entry.projectColor,
+        entry.description,
+        entry.startTime,
+        entry.endTime,
+        entry.durationSeconds,
+        entry.createdAt,
+        entry.locationLat,
+        entry.locationLng,
+        entry.locationLabel,
+        entry.id,
+      ]
+    );
   }
 
   for (const project of demoProjects) {
@@ -353,11 +353,11 @@ const seedDemoData = async (db: SQLite.SQLiteDatabase): Promise<void> => {
 };
 
 export const simpleHash = (str: string): string => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).padStart(8, '0');
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0');
 };
