@@ -11,6 +11,7 @@ import { Colors, Spacing, BorderRadius, Typography } from '../../../shared/theme
 import { TimeEntry } from '../../../entities/timeEntry/model/types';
 import { formatDuration, formatTime } from '../../../shared/utils/formatTime';
 import { formatDateShort } from '../../../shared/utils/dateUtils';
+import { formatLocation } from '../../../shared/utils/location';
 
 interface TimeEntryListProps {
     entries: TimeEntry[];
@@ -42,6 +43,11 @@ const EntryItem = memo<{ item: TimeEntry; onDelete?: (id: string) => void; showD
                         </Text>
                     ) : null}
                 </View>
+                {showDate ? (
+                    <Text style={[Typography.bodySmall, styles.locationText]} numberOfLines={1}>
+                        Геолокация: {formatLocation(item)}
+                    </Text>
+                ) : null}
             </View>
             {onDelete && (
                 <TouchableOpacity
@@ -129,6 +135,11 @@ const styles = StyleSheet.create({
     },
     desc: {
         flex: 1,
+        color: Colors.textMuted,
+        fontSize: 11,
+    },
+    locationText: {
+        marginTop: 2,
         color: Colors.textMuted,
         fontSize: 11,
     },

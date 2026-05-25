@@ -141,29 +141,34 @@ export const TrackingScreen = memo(() => {
                             fullWidth
                         />
                     ) : (
-                        <View style={styles.startRow}>
-                            <TouchableOpacity
-                                style={[styles.projectChip,
-                                selectedProject
-                                    ? { borderColor: selectedProject.color, backgroundColor: selectedProject.color + '20' }
-                                    : {}
-                                ]}
-                                onPress={() => setShowPicker(true)}
-                            >
-                                {selectedProject && (
-                                    <View style={[styles.chipDot, { backgroundColor: selectedProject.color }]} />
-                                )}
-                                <Text style={[Typography.bodySmall, selectedProject ? { color: selectedProject.color } : {}]}>
-                                    {selectedProject?.name ?? 'Выбрать проект'}
-                                </Text>
-                            </TouchableOpacity>
-                            <NeonButton
-                                onPress={handleStart}
-                                label="Старт"
-                                size="md"
-                                style={styles.startBtn}
-                            />
-                        </View>
+                        <>
+                            <View style={styles.startRow}>
+                                <TouchableOpacity
+                                    style={[styles.projectChip,
+                                    selectedProject
+                                        ? { borderColor: selectedProject.color, backgroundColor: selectedProject.color + '20' }
+                                        : {}
+                                    ]}
+                                    onPress={() => setShowPicker(true)}
+                                >
+                                    {selectedProject && (
+                                        <View style={[styles.chipDot, { backgroundColor: selectedProject.color }]} />
+                                    )}
+                                    <Text style={[Typography.bodySmall, selectedProject ? { color: selectedProject.color } : {}]}>
+                                        {selectedProject?.name ?? 'Выбрать проект'}
+                                    </Text>
+                                </TouchableOpacity>
+                                <NeonButton
+                                    onPress={handleStart}
+                                    label="Старт"
+                                    size="md"
+                                    style={styles.startBtn}
+                                />
+                            </View>
+                            <Text style={[Typography.bodySmall, styles.geoNotice]}>
+                                При старте будет передаваться геолокация
+                            </Text>
+                        </>
                     )}
                 </GlassCard>
 
@@ -269,6 +274,11 @@ const styles = StyleSheet.create({
     },
     startBtn: {
         paddingHorizontal: Spacing.xl,
+    },
+    geoNotice: {
+        marginTop: Spacing.sm,
+        color: Colors.textMuted,
+        textAlign: 'center',
     },
     section: {
         paddingHorizontal: Spacing.lg,

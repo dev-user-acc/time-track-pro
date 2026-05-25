@@ -23,14 +23,25 @@ const rowToUser = (row: {
 export const userRepository = {
     async register(data: RegisterData): Promise<User> {
         const db = await getDatabase();
+        const email = data.email.trim().toLowerCase();
+        const name = data.name.trim();
+        const password = data.password;
+
+        if (!email || !name) {
+            throw new Error('Введите имя и email');
+        }
+        if (password.length < 6) {
+            throw new Error('Пароль должен быть не короче 6 символов');
+        }
+
         const existing = await db.getFirstAsync<{ id: string }>(
             'SELECT id FROM users WHERE email = ?',
-            [data.email.toLowerCase()]
+            [email]
         );
         if (existing) throw new Error('Пользователь с таким email уже зарегистрирован');
 
         const id = generateId();
-        const passwordHash = simpleHash(data.password + 'tt_salt');
+        const passwordHash = simpleHash(password + 'tt_salt');
         const avatarColor = pickAvatarColor();
         const now = new Date().toISOString();
         const role = data.role ?? 'employee';
@@ -38,21 +49,28 @@ export const userRepository = {
         await db.runAsync(
             `INSERT INTO users (id, email, password_hash, name, role, avatar_color, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [id, data.email.toLowerCase(), passwordHash, data.name, role, avatarColor, now]
+            [id, email, passwordHash, name, role, avatarColor, now]
         );
 
-        return { id, email: data.email.toLowerCase(), name: data.name, role, avatarColor, createdAt: now };
+        return { id, email, name, role, avatarColor, createdAt: now };
     },
 
     async login(creds: AuthCredentials): Promise<User> {
         const db = await getDatabase();
-        const passwordHash = simpleHash(creds.password + 'tt_salt');
+        const email = creds.email.trim().toLowerCase();
+        const password = creds.password;
+
+        if (!email || !password) {
+            throw new Error('Введите email и пароль');
+        }
+
+        const passwordHash = simpleHash(password + 'tt_salt');
         const row = await db.getFirstAsync<{
             id: string; email: string; name: string; role: string;
             avatar_color: string; created_at: string;
         }>(
             'SELECT id, email, name, role, avatar_color, created_at FROM users WHERE email = ? AND password_hash = ?',
-            [creds.email.toLowerCase(), passwordHash]
+            [email, passwordHash]
         );
         if (!row) throw new Error('Неверный email или пароль');
         return rowToUser(row);

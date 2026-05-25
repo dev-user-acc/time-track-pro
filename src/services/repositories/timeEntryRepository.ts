@@ -1,6 +1,16 @@
 import { getDatabase } from '../database/database';
 import { TimeEntry, CreateTimeEntryData } from '../../entities/timeEntry/model/types';
 import { generateId } from '../../shared/utils/uuid';
+import { generateRandomAlmatyLocation } from '../../shared/utils/location';
+
+const toNullableNumber = (value: unknown): number | null => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+};
 
 const rowToEntry = (row: Record<string, unknown>): TimeEntry => ({
     id: row.id as string,
@@ -12,6 +22,9 @@ const rowToEntry = (row: Record<string, unknown>): TimeEntry => ({
     startTime: row.start_time as string,
     endTime: (row.end_time as string) ?? null,
     durationSeconds: (row.duration_seconds as number) ?? 0,
+    locationLat: toNullableNumber(row.location_lat),
+    locationLng: toNullableNumber(row.location_lng),
+    locationLabel: (row.location_label as string) ?? '',
     createdAt: row.created_at as string,
 });
 
@@ -49,14 +62,26 @@ export const timeEntryRepository = {
         const db = await getDatabase();
         const id = generateId();
         const now = new Date().toISOString();
+        const resolvedLocation =
+            typeof data.locationLat === 'number' && typeof data.locationLng === 'number'
+                ? {
+                    latitude: data.locationLat,
+                    longitude: data.locationLng,
+                    label: data.locationLabel ?? 'Алматы',
+                }
+                : generateRandomAlmatyLocation();
+
         await db.runAsync(
             `INSERT INTO time_entries
-         (id, user_id, project_id, project_name, project_color, description, start_time, end_time, duration_seconds, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, user_id, project_id, project_name, project_color, description, start_time, end_time, duration_seconds, created_at, location_lat, location_lng, location_label)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id, userId, data.projectId, data.projectName, data.projectColor,
                 data.description ?? '', data.startTime, data.endTime,
                 data.durationSeconds, now,
+                resolvedLocation.latitude,
+                resolvedLocation.longitude,
+                resolvedLocation.label,
             ]
         );
         return {
@@ -64,7 +89,11 @@ export const timeEntryRepository = {
             projectName: data.projectName, projectColor: data.projectColor,
             description: data.description ?? '',
             startTime: data.startTime, endTime: data.endTime,
-            durationSeconds: data.durationSeconds, createdAt: now,
+            durationSeconds: data.durationSeconds,
+            locationLat: resolvedLocation.latitude,
+            locationLng: resolvedLocation.longitude,
+            locationLabel: resolvedLocation.label,
+            createdAt: now,
         };
     },
 

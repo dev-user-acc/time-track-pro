@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -11,6 +11,7 @@ import {
     FlatList,
     ListRenderItemInfo,
     ActivityIndicator,
+    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,9 +21,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius } from '../../shared/theme';
 import { GlassCard, Badge } from '../../shared/ui';
 import { userRepository } from '../../services/repositories/userRepository';
+import { timeEntryRepository } from '../../services/repositories/timeEntryRepository';
 import { useAuthStore } from '../../store/authStore';
-import { formatHours } from '../../shared/utils/formatTime';
+import { formatDuration, formatHours } from '../../shared/utils/formatTime';
+import { formatDateShort } from '../../shared/utils/dateUtils';
 import type { User, UserRole } from '../../entities/user/model/types';
+import type { TimeEntry } from '../../entities/timeEntry/model/types';
+import { getMapsUrl, resolveEntryLocation } from '../../shared/utils/location';
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; icon: string; description: string }> = {
     admin: {
@@ -185,6 +190,11 @@ export const AdminUsersScreen = memo(() => {
         enabled: users.length > 0,
     });
 
+    const { data: recentEntries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
+        queryKey: ['admin_recent_entries'],
+        queryFn: () => timeEntryRepository.getAllUsersEntries(40),
+    });
+
     const { mutate: updateRole, isPending } = useMutation({
         mutationFn: ({ userId, role }: { userId: string; role: UserRole }) =>
             userRepository.updateRole(userId, role),
@@ -216,6 +226,35 @@ export const AdminUsersScreen = memo(() => {
         { admin: 0, manager: 0, employee: 0 }
     );
 
+    const usersById = useMemo(() => {
+        const map: Record<string, User> = {};
+        for (const user of users) {
+            map[user.id] = user;
+        }
+        return map;
+    }, [users]);
+
+    const handleRefresh = useCallback(() => {
+        refetch();
+        refetchEntries();
+    }, [refetch, refetchEntries]);
+
+    const openInMaps = useCallback(async (entry: TimeEntry) => {
+        const location = resolveEntryLocation(entry);
+        const url = getMapsUrl(location.latitude, location.longitude, location.label);
+
+        try {
+            const supported = await Linking.canOpenURL(url);
+            if (!supported) {
+                Alert.alert('Карты недоступны', 'Не удалось открыть ссылку карт на этом устройстве.');
+                return;
+            }
+            await Linking.openURL(url);
+        } catch {
+            Alert.alert('Ошибка', 'Не удалось открыть локацию в картах.');
+        }
+    }, []);
+
     const renderItem = useCallback(({ item }: ListRenderItemInfo<User>) => {
         const stats = (teamStats as Record<string, { totalSeconds: number; projectCount: number }>)[item.id];
         return (
@@ -229,13 +268,43 @@ export const AdminUsersScreen = memo(() => {
         );
     }, [teamStats, currentUser, handleChangeRole]);
 
+    const renderWorkItem = useCallback(({ item }: ListRenderItemInfo<TimeEntry>) => {
+        const worker = usersById[item.userId];
+        const location = resolveEntryLocation(item);
+
+        return (
+            <GlassCard style={styles.workItem}>
+                <View style={styles.workHeader}>
+                    <Text style={[Typography.bodySmall, styles.workProject]} numberOfLines={1}>
+                        {item.projectName}
+                    </Text>
+                    <Text style={[Typography.bodySmall, { color: Colors.neonBlue, fontWeight: '700' }]}>
+                        {formatDuration(item.durationSeconds)}
+                    </Text>
+                </View>
+
+                <Text style={[Typography.caption, styles.workMeta]} numberOfLines={2}>
+                    {worker?.name ?? 'Неизвестный сотрудник'} • {formatDateShort(item.startTime)}
+                </Text>
+                <Text style={[Typography.caption, styles.workMeta]} numberOfLines={2}>
+                    Локация: {location.label}, {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                </Text>
+
+                <TouchableOpacity onPress={() => openInMaps(item)} style={styles.mapBtn}>
+                    <Ionicons name="map-outline" size={14} color={Colors.neonBlue} />
+                    <Text style={[Typography.caption, { color: Colors.neonBlue }]}>Открыть в картах</Text>
+                </TouchableOpacity>
+            </GlassCard>
+        );
+    }, [usersById, openInMaps]);
+
     return (
         <SafeAreaView style={styles.safe} edges={['top']}>
             <LinearGradient colors={['#05050f', '#08081a']} style={StyleSheet.absoluteFill} />
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={Colors.neonBlue} />
+                    <RefreshControl refreshing={isLoading || entriesLoading} onRefresh={handleRefresh} tintColor={Colors.neonBlue} />
                 }
             >
                 <View style={styles.pageHeader}>
@@ -266,6 +335,24 @@ export const AdminUsersScreen = memo(() => {
                             data={users}
                             renderItem={renderItem}
                             keyExtractor={(u) => u.id}
+                            scrollEnabled={false}
+                        />
+                    )}
+                </View>
+
+                <View style={styles.workSection}>
+                    <Text style={[Typography.caption, styles.sectionLabel]}>ДЕТАЛИЗАЦИЯ РАБОТЫ</Text>
+                    {entriesLoading ? (
+                        <ActivityIndicator color={Colors.neonBlue} style={{ marginTop: Spacing.md }} />
+                    ) : recentEntries.length === 0 ? (
+                        <Text style={[Typography.bodySmall, styles.emptyWorkText]}>
+                            Пока нет записей с детализацией времени и локаций.
+                        </Text>
+                    ) : (
+                        <FlatList
+                            data={recentEntries}
+                            renderItem={renderWorkItem}
+                            keyExtractor={(item) => item.id}
                             scrollEnabled={false}
                         />
                     )}
@@ -311,9 +398,42 @@ const styles = StyleSheet.create({
     listSection: {
         paddingHorizontal: Spacing.lg,
     },
+    workSection: {
+        paddingHorizontal: Spacing.lg,
+        marginTop: Spacing.lg,
+    },
     sectionLabel: {
         marginBottom: Spacing.md,
         color: Colors.textMuted,
+    },
+    emptyWorkText: {
+        color: Colors.textMuted,
+        textAlign: 'center',
+        paddingVertical: Spacing.lg,
+    },
+    workItem: {
+        marginBottom: Spacing.sm,
+    },
+    workHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: Spacing.sm,
+    },
+    workProject: {
+        flex: 1,
+        fontWeight: '700',
+    },
+    workMeta: {
+        marginTop: 4,
+        color: Colors.textMuted,
+    },
+    mapBtn: {
+        marginTop: Spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        alignSelf: 'flex-start',
     },
     userCard: {
         marginBottom: Spacing.sm,

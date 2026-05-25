@@ -104,7 +104,7 @@ export const RegisterScreen = memo(() => {
     const handleRegister = useCallback(() => {
         if (!validate()) return;
         register(
-            { name: name.trim(), email, password, role },
+            { name: name.trim(), email: email.trim().toLowerCase(), password, role },
             {
                 onError: (err) => Alert.alert('Ошибка регистрации', err.message),
             }

@@ -23,8 +23,15 @@ import { Colors, Spacing, Typography } from '../../shared/theme';
 import { NeonButton, Input } from '../../shared/ui';
 import { useLogin } from '../../features/auth/model/useAuth';
 import type { AuthStackParamList } from '../../app/navigation/types';
+import { DEMO_USERS } from '../../entities/user/model/demoUsers';
 
 type Nav = StackNavigationProp<AuthStackParamList, 'Login'>;
+
+const ROLE_LABELS = {
+    admin: 'Админ',
+    manager: 'Менеджер',
+    employee: 'Сотрудник',
+} as const;
 
 export const LoginScreen = memo(() => {
     const navigation = useNavigation<Nav>();
@@ -58,7 +65,7 @@ export const LoginScreen = memo(() => {
     const handleLogin = useCallback(() => {
         if (!validate()) return;
         login(
-            { email, password },
+            { email: email.trim().toLowerCase(), password },
             {
                 onError: (err) => {
                     Alert.alert('Ошибка входа', err.message);
@@ -123,6 +130,14 @@ export const LoginScreen = memo(() => {
                             fullWidth
                             style={styles.btn}
                         />
+                        <View style={styles.demoBox}>
+                            <Text style={[Typography.caption, styles.demoTitle]}>Демо пользователи</Text>
+                            {DEMO_USERS.map((u) => (
+                                <Text key={u.id} style={[Typography.bodySmall, styles.demoLine]}>
+                                    {ROLE_LABELS[u.role]}: {u.email} / {u.password}
+                                </Text>
+                            ))}
+                        </View>
                         <TouchableOpacity
                             onPress={() => navigation.navigate('Register')}
                             style={styles.link}
@@ -182,5 +197,21 @@ const styles = StyleSheet.create({
     },
     form: {},
     btn: { marginTop: Spacing.sm },
+    demoBox: {
+        marginTop: Spacing.lg,
+        padding: Spacing.md,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: Colors.cardBorder,
+        backgroundColor: Colors.card,
+    },
+    demoTitle: {
+        marginBottom: Spacing.xs,
+        color: Colors.textMuted,
+    },
+    demoLine: {
+        color: Colors.textSecondary,
+        marginTop: 2,
+    },
     link: { alignItems: 'center', marginTop: Spacing.xl },
 });
